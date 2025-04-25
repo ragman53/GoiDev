@@ -1,0 +1,79 @@
+/* 基本的なリセットとbodyのスタイル */
+/* 基本的なリセットとbodyのスタイル */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  background-color: #ffffff; /* 白背景 */
+  color: #111111; /* 黒文字 */
+  margin: 0;
+  padding: 0; /* bodyのpaddingは無しに */
+}
+
+h1 {
+  text-align: center;
+  font-weight: normal; /* やや細めに */
+  font-size: 1.5rem;
+  padding: 1.5rem 0;
+  margin: 0;
+  border-bottom: 1px solid red; /* タイトル下の赤い線 */
+}
+
+/* 単語リストコンテナのスタイル */
+#word-list-container {
+  max-height: calc(100vh - 100px); /* 画面の高さからh1の高さを引いた程度に */
+  overflow-y: auto; /* 縦方向にスクロール可能にする */
+  padding: 0 1rem; /* 左右に少しパディング */
+}
+
+/* 各単語アイテムのスタイル */
+.word-item {
+  padding: 1.5rem 0.5rem; /* 上下のパディング */
+  border-bottom: 1px solid red; /* 各アイテムの下に赤い線 */
+  display: flex; /* Flexboxで内部要素を配置 */
+  flex-wrap: wrap; /* 要素が折り返すように */
+  align-items: baseline; /* ベースラインを揃える */
+  gap: 0.5rem 1rem; /* 要素間の隙間 (縦 横) */
+}
+
+/* 単語自体のスタイル */
+.word {
+  font-size: 1.4rem;
+  font-weight: bold;
+  flex-basis: 200px; /* 単語部分の最小幅（調整可能） */
+  flex-grow: 1; /* 残りのスペースを単語が取る */
+}
+
+/* 定義のスタイル */
+.definition {
+  font-family: "Menlo", "Consolas", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #444444; /* やや薄い文字色 */
+  flex-basis: 100%; /* 定義は常に改行して全幅を使う */
+  margin-top: 0.5rem; /* 単語との間に少しマージン */
+  padding-left: 1rem; /* 少しインデント */
+  border-left: 2px solid #ddd; /* 左に薄いグレーの線 */
+}
+
+/* 非表示用クラス (変更なし) */
+.hidden {
+  display: none;
+}
+
+/* 定義表示/非表示ボタンのスタイル */
+.toggle-definition-button {
+  font-family: inherit;
+  font-size: 0.8rem;
+  background: none; /* 背景なし */
+  border: 1px solid red; /* 赤い枠線 */
+  color: red; /* 赤い文字 */
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  margin-left: auto; /* ボタンを右端に寄せる */
+  align-self: center; /* 上下の位置を中央に */
+  transition: none;
+}
+
+.toggle-definition-button:hover {
+  background-color: rgba(255, 0, 0, 0.1); /* ホバー時に薄く赤背景 */
+}

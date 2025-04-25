@@ -1,0 +1,74 @@
+# === General ===
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files (including Vim swap files)
+temp/
+tmp/
+*.sw?
+
+
+# === Node.js ===
+# Dependencies
+/node_modules/
+
+# Build output
+/dist/
+/dist-ssr/
+
+# Misc local files (like .env.local)
+*.local
+
+
+# === Rust / Tauri ===
+# Cargo build artifacts (very important!)
+/target/
+/src-tauri/target/
+
+# Tauri generated files/folders during build/bundle
+/src-tauri/gen/
+/src-tauri/bin/
+/src-tauri/bundle/
+
+# SQLite Database & Journal (Recommend ignoring data files)
+/src-tauri/database.sqlite
+/src-tauri/*.sqlite-journal
+
+# Tauri Mobile specific (Good to add for future-proofing)
+# /src-tauri/gen/android/
+# /src-tauri/gen/ios/
+
+
+# === Editor / IDE ===
+# VS Code
+.vscode/*
+# Keep recommended extensions and workspace settings
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# JetBrains
+.idea/
+
+# Visual Studio & Rider
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sluo
+
+
+# === Environment Variables ===
+# Exclude .env files containing secrets
+.env*
+# But allow example env files under version control
+!.env.example
