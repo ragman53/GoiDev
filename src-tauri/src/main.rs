@@ -38,6 +38,37 @@ async fn get_words(pool: tauri::State<'_, DbPool>) -> Result<Vec<WordEntry>, Str
     Ok(words) // Return the fetched words
 }
 
+/// Adds a new word to the database.
+#[tauri::command]
+async fn add_word(
+    word: String,
+    definition: String,
+    pool: tauri::State<'_, DbPool>,
+) -> Result<(), String> {
+    info!("Attempting to add word: '{}'", word); // Log the word being added
+    let sql = "INSERT INTO words (word, definition) VALUES (?, ?)"; // SQL query to insert a new word
+    // Execute the SQL query with the provided word and definition
+    match sqlx::query(sql)
+        .bind(word.clone())
+        .bind(definition)
+        .execute(&*pool)
+        .await
+    {
+        Ok(result) => {
+            info!(
+                "Word '{}' added successfully. Rows affected: {}",
+                word,
+                result.rows_affected()
+            ); // Log success message
+            Ok(()) // Return Ok if the word was added successfully
+        }
+        Err(e) => {
+            error!("Failed to add word '{}': {:?}", word, e);
+            Err(format!("Failed to add word '{}': {:?}", word, e)) // Return an error if the insertion fails 
+        }
+    }
+}
+
 // Entry point of the Tauri application
 fn main() {
     tauri::Builder::default()
@@ -60,7 +91,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_words]) // Register the `get_words` command
+        .invoke_handler(tauri::generate_handler![get_words, add_word]) // Register the `get_words` command
         .run(tauri::generate_context!()) // Run the Tauri application
         .expect("error while running tauri application"); // Panic if the app fails to run
 }
