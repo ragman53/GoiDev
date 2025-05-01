@@ -1,5 +1,4 @@
-/* Basic reset and body styles */
-/* Basic reset and body styles */
+/* === Global Styles === */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
@@ -124,4 +123,20 @@ h1 {
   align-self: flex-start; /* Align to the left */
   /* Other button styles (border, color, etc.) are applied from existing button rules */
   margin-top: 0.5rem; /* Small margin above button */
+}
+
+.delete-button {
+  font-family: inherit;
+  font-size: 0.8rem;
+  background: none;
+  border: 1px solid #888; /* Grey border */
+  color: #555; /* Grey text */
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  transition: none;
+}
+
+.delete-button:hover {
+  background-color: #f0f0f0; /* Light grey background on hover */
+  border-color: #555;
 }

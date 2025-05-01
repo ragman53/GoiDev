@@ -69,6 +69,28 @@ async fn add_word(
     }
 }
 
+#[tauri::command]
+async fn delete_word(id: i64, pool: tauri::State<'_, DbPool>) -> Result<(), String> {
+    info!("Attempting to delete word with ID: {}", id);
+    let sql = "DELETE FROM words WHERE id = ?";
+
+    match sqlx::query(sql).bind(id).execute(&*pool).await {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                info!("Successfully deleted word with ID: {}", id);
+                Ok(())
+            } else {
+                let err_msg = format!("Word with ID {} not found for deletion.", id);
+                error!("{}", err_msg);
+                Err(err_msg) // Return an error if the word was not found
+            }
+        }
+        Err(e) => {
+            error!("Failed to delete word with ID {}: {:?}", id, e);
+            Err(format!("Failed to delete word with ID {}: {:?}", id, e)) // Return an error if the deletion fails
+        }
+    }
+}
 // Entry point of the Tauri application
 fn main() {
     tauri::Builder::default()
@@ -91,7 +113,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_words, add_word]) // Register the `get_words` command
+        .invoke_handler(tauri::generate_handler![get_words, add_word, delete_word]) // Register the `get_words` command
         .run(tauri::generate_context!()) // Run the Tauri application
         .expect("error while running tauri application"); // Panic if the app fails to run
 }

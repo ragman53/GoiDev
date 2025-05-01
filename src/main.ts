@@ -59,17 +59,33 @@ function renderWordList(wordsToRender: WordEntry[]) {
     definitionSpan.textContent = card.definition;
     // definitionSPan.id = `definition-${card.id}`;
 
+    // Button Container Options for good layout
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.marginLeft = "auto";
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.gap = "0.5rem";
+    buttonContainer.style.alignItems = "center";
+
     // Create toggle button to show/hide the definition
     const toggleButton = document.createElement("button");
     toggleButton.className = "toggle-definition-button";
-    toggleButton.textContent = "Def";
+    toggleButton.textContent = "Definition";
     toggleButton.addEventListener("click", () => {
       definitionSpan.classList.toggle("hidden");
     });
 
+    // Create delete button to remove the word
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "delete-button";
+    deleteButton.textContent = "Delete";
+    deleteButton.dataset.id = card.id.toString();
+
     // Assemble all elements and add to the container
+    buttonContainer.appendChild(toggleButton);
+    buttonContainer.appendChild(deleteButton);
+
     itemContainer.appendChild(wordSpan);
-    itemContainer.appendChild(toggleButton);
+    itemContainer.appendChild(buttonContainer);
     itemContainer.appendChild(definitionSpan);
     wordListContainer.appendChild(itemContainer);
   });
@@ -128,6 +144,37 @@ async function loadAndRenderWords() {
 // Add event listener to the 'Add Word' button, calling handleAddWord on click
 addButton.addEventListener("click", handleAddWord);
 
+// Use event delegation to handle delete button clicks
+wordListContainer.addEventListener("click", async (event) => {
+  const target = event.target as HTMLElement;
+  if (target.classList.contains("delete-button")) {
+    const wordIdString = target.dataset.id;
+    if (!wordIdString) {
+      console.error("Delete button clicked, but no ID found.");
+      return;
+    }
+    const wordId = parseInt(wordIdString, 10);
+
+    const wordText =
+      target.closest(".word-item")?.querySelector(".word")?.textContent ||
+      "this word";
+    if (!window.confirm(`Are you sure you want to delete "${wordText}"?`)) {
+      return;
+    }
+    try {
+      console.log(`Attempting to invoke delete_word for ID: ${wordId}`);
+      await invoke("delete_word", { id: wordId });
+
+      console.log(`Successfully invoked delete_word for ID: ${wordId}`);
+      alert(`Word "${wordText}" deleted successfully!`);
+      // Refresh the list from the database
+      await loadAndRenderWords();
+    } catch (error) {
+      console.error("Failed to delete word via backend:", error);
+      alert(`Error deleting word: ${error}`);
+    }
+  }
+});
 // --- Initialisation ---
 // Load words from backend when the script runs
 loadAndRenderWords();
