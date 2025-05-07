@@ -1,151 +1,74 @@
-// src/main.ts
-// Import the invoke function from Tauri API to call Rust backend functions
-import { invoke } from "@tauri-apps/api/core";
+// src/main.ts (Refactored)
+// Main application entry point and event listener setup.
 
-/**
- * Interface defining the structure of a word entry in the application
- * Each entry contains an ID, the word itself, and its definition
- * Note: created_at field is currently commented out
- */
-interface WordEntry {
-  id: number;
-  word: string;
-  definition: string;
-  // created_at?: string;
-}
-// --- Global Variables ---
-// Array to store all word entries fetched from the database or added manually
-let currentWords: WordEntry[] = [];
-// --- DOM Elements References ---
-// Get reference to the HTML container that will display the list of words
+// Import functions from our modules
+import { getWords, addWordFromApi, deleteWord } from "./api";
+import {
+  renderWordList,
+  clearNewWordInput,
+  showErrorMessage,
+  showSuccessMessage,
+  setAddButtonLoading,
+} from "./ui";
+
+// --- DOM Element References (kept in main for event listeners) ---
 const wordListContainer = document.getElementById("word-list-container")!;
-// Get references to the new word form elements
 const newWordInput = document.getElementById(
   "new-word-input"
 )! as HTMLInputElement;
-const newDefinitionInput = document.getElementById(
-  "new-definition-input"
-)! as HTMLTextAreaElement;
+// const newDefinitionInput = document.getElementById('new-definition-input')! as HTMLTextAreaElement; // Removed
 const addButton = document.getElementById("add-button")!;
 
 // --- Functions ---
+
 /**
- * Renders the list of words to the DOM
- * @param wordsToRender - Array of WordEntry objects to display
+ * Loads words from the backend and renders them. Handles initial load and refreshes.
  */
-function renderWordList(wordsToRender: WordEntry[]) {
-  wordListContainer.innerHTML = ""; // Clear the container
-
-  // Display a message if no words are available
-  if (wordsToRender.length === 0) {
-    wordListContainer.innerHTML = "<p>No words found in database.</p>";
-    return;
+async function loadAndRender() {
+  try {
+    console.log("main.ts: Loading words...");
+    const words = await getWords(); // Use API module
+    renderWordList(words); // Use UI module
+    console.log("main.ts: Words rendered.");
+  } catch (error) {
+    console.error("main.ts: Failed to load and render words:", error);
+    showErrorMessage(`Error loading words: ${error}`); // Use UI module
   }
-
-  // Iterate through each word entry and create UI elements
-  wordsToRender.forEach((card) => {
-    // Create container for each word item
-    const itemContainer = document.createElement("div");
-    itemContainer.className = "word-item";
-
-    // Create and configure the word display element
-    const wordSpan = document.createElement("span");
-    wordSpan.className = "word";
-    wordSpan.textContent = card.word;
-
-    // Create and configure the definition element (initially hidden)
-    const definitionSpan = document.createElement("span");
-    definitionSpan.className = "definition hidden";
-    definitionSpan.textContent = card.definition;
-    // definitionSPan.id = `definition-${card.id}`;
-
-    // Button Container Options for good layout
-    const buttonContainer = document.createElement("div");
-    buttonContainer.style.marginLeft = "auto";
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.gap = "0.5rem";
-    buttonContainer.style.alignItems = "center";
-
-    // Create toggle button to show/hide the definition
-    const toggleButton = document.createElement("button");
-    toggleButton.className = "toggle-definition-button";
-    toggleButton.textContent = "Definition";
-    toggleButton.addEventListener("click", () => {
-      definitionSpan.classList.toggle("hidden");
-    });
-
-    // Create delete button to remove the word
-    const deleteButton = document.createElement("button");
-    deleteButton.className = "delete-button";
-    deleteButton.textContent = "Delete";
-    deleteButton.dataset.id = card.id.toString();
-
-    // Assemble all elements and add to the container
-    buttonContainer.appendChild(toggleButton);
-    buttonContainer.appendChild(deleteButton);
-
-    itemContainer.appendChild(wordSpan);
-    itemContainer.appendChild(buttonContainer);
-    itemContainer.appendChild(definitionSpan);
-    wordListContainer.appendChild(itemContainer);
-  });
 }
 
-async function handleAddWord() {
+/**
+ * Handles the 'Add Word' button click event.
+ */
+async function handleAddWordClick() {
   const newWord = newWordInput.value.trim();
-  const newDefinition = newDefinitionInput.value.trim();
-
-  if (!newWord || !newDefinition) {
-    alert("Please enter both a word and a definition.");
+  if (!newWord) {
+    showErrorMessage("Please enter a word."); // Use UI module
     return;
   }
 
+  setAddButtonLoading(true, addButton); // Use UI module
+
   try {
-    console.log(`Attempting to invoke add_word for ${newWord}`);
-    // Call the Rust backend function 'add_word' to add a new word
-    await invoke("add_word", { word: newWord, definition: newDefinition });
-    // If invoke succeeds (no error thrown):
-    console.log(`Successfully invoked add_word for: ${newWord}`);
-    alert(`Word "${newWord}" added successfully!`);
-    // Clear the input fields
-    newWordInput.value = "";
-    newDefinitionInput.value = "";
-    // --- Refresh the list from the database ---
-    await loadAndRenderWords();
+    await addWordFromApi(newWord); // Use API module
+    showSuccessMessage(`Word "${newWord}" added successfully!`); // Use UI module
+    clearNewWordInput(); // Use UI module
+    await loadAndRender(); // Refresh the list after successful add
   } catch (error) {
-    // Handle any errors that occur during the process
-    console.error("Failed to add word via backend:", error);
-    alert(`Error adding word: ${error}`);
+    console.error(`main.ts: Failed to add word "${newWord}":`, error);
+    showErrorMessage(
+      `Error adding word "<span class="math-inline">\{newWord\}"\:\\n</span>{error}`
+    ); // Use UI module
+  } finally {
+    setAddButtonLoading(false, addButton); // Use UI module
   }
 }
+
 /**
- * Asynchronously loads words from the database through Tauri backend
- * and renders them to the UI
+ * Handles clicks within the word list container (for delete buttons).
+ * Uses event delegation.
+ * @param event The click event object.
  */
-async function loadAndRenderWords() {
-  try {
-    console.log("Attempting to load words from backend...");
-    // Call the Rust backend function 'get_words' to fetch words
-    const wordsFromDb = await invoke<WordEntry[]>("get_words");
-    // Store fetched words in the global variable
-    currentWords = wordsFromDb;
-    // Render the words to the UI
-    renderWordList(currentWords);
-    console.log("Words loaded from backend:", currentWords);
-  } catch (error) {
-    // Handle any errors that occur during the process
-    console.error("Failed to load words from backend:", error);
-    wordListContainer.innerHTML = `<p style="color: red;">Error loading words: ${error}</p>`;
-  }
-}
-
-// --- Event Listeners ---
-
-// Add event listener to the 'Add Word' button, calling handleAddWord on click
-addButton.addEventListener("click", handleAddWord);
-
-// Use event delegation to handle delete button clicks
-wordListContainer.addEventListener("click", async (event) => {
+async function handleWordListClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
   if (target.classList.contains("delete-button")) {
     const wordIdString = target.dataset.id;
@@ -158,23 +81,42 @@ wordListContainer.addEventListener("click", async (event) => {
     const wordText =
       target.closest(".word-item")?.querySelector(".word")?.textContent ||
       "this word";
-    if (!window.confirm(`Are you sure you want to delete "${wordText}"?`)) {
-      return;
+    // Use built-in confirm for simplicity, could be replaced by custom UI later
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${wordText}" (ID: ${wordId})?`
+      )
+    ) {
+      return; // Stop if user cancels
     }
-    try {
-      console.log(`Attempting to invoke delete_word for ID: ${wordId}`);
-      await invoke("delete_word", { id: wordId });
 
-      console.log(`Successfully invoked delete_word for ID: ${wordId}`);
-      alert(`Word "${wordText}" deleted successfully!`);
-      // Refresh the list from the database
-      await loadAndRenderWords();
+    try {
+      await deleteWord(wordId); // Use API module
+      showSuccessMessage(`Word "${wordText}" deleted successfully!`); // Use UI module
+      await loadAndRender(); // Refresh the list
     } catch (error) {
-      console.error("Failed to delete word via backend:", error);
-      alert(`Error deleting word: ${error}`);
+      console.error(`main.ts: Failed to delete word (ID: ${wordId}):`, error);
+      showErrorMessage(`Error deleting word: ${error}`); // Use UI module
     }
   }
-});
+}
+
+// --- Event Listeners Setup ---
+function setupEventListeners() {
+  addButton.addEventListener("click", handleAddWordClick);
+  wordListContainer.addEventListener("click", handleWordListClick);
+  console.log("main.ts: Event listeners set up.");
+}
+
 // --- Initialisation ---
-// Load words from backend when the script runs
-loadAndRenderWords();
+/**
+ * Initializes the application.
+ */
+async function initializeApp() {
+  setupEventListeners();
+  await loadAndRender(); // Load initial data
+  console.log("main.ts: Application initialized.");
+}
+
+// Start the application initialization process
+initializeApp();
