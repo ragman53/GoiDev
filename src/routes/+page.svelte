@@ -1,101 +1,103 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getWords } from "../api";
-  import type { WordEntry } from "../types";
+  import { getWords, deleteWord } from "$lib/api"; // Import deleteWord
+  import type { WordEntry } from "$lib/types";
+  import WordListItem from "$lib/WordListItem.svelte";
 
   let words: WordEntry[] = [];
   let isLoading = true;
   let errorMessage: string | null = null;
 
-  onMount(async () => {
+  // Function to load words (reused for initial load and refresh)
+  async function loadWords() {
     isLoading = true;
     errorMessage = null;
     try {
       words = await getWords();
-    } catch (e) {
-      if (e instanceof Error) {
-        errorMessage = e.message;
-      } else {
-        errorMessage = "An unknown error occurred while fetching words.";
-      }
-      console.error("Error in onMount while fetching words:", e);
+    } catch (e: any) {
+      errorMessage = e.message || "An unknown error occurred.";
+      console.error("Error fetching words:", e);
     } finally {
       isLoading = false;
     }
-  });
-  // TODO: Add functions here later for addWord, deleteWord (which will call api.ts functions)
-  // TODO: Add logic for toggling definition visibility (can be per-item state or a more complex solution)
+  }
+
+  onMount(loadWords); // Load words when component mounts
+
+  // This function will be passed as a prop to WordListItem
+  // Its signature now matches the expected callback prop
+  async function handleItemDeleteRequest(detail: { id: number; word: string }) {
+    const { id, word } = detail;
+    console.log(`Delete requested for ID: ${id}, Word: ${word}`);
+
+    isLoading = true;
+    try {
+      await deleteWord(id);
+      console.log(`Word "${word}" (ID: ${id}) deleted successfully.`);
+      await loadWords();
+    } catch (e: any) {
+      errorMessage = `Error deleting word "${word}": ${e.message || e}`;
+      console.error(`Error deleting word "${word}":`, e);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // TODO: AddWordForm component and its logic
 </script>
 
 <div class="app-container">
-  <h1>Word List (Svelte Version)</h1>
+  <h1>Word List (Svelte Edition)</h1>
 
-  {#if isLoading}
-    <p>Loading words from database...</p>
+  {#if isLoading && words.length === 0}
+    <p class="loading-message">Loading words from database...</p>
   {:else if errorMessage}
-    <p style="color: red;">Error: {errorMessage}</p>
+    <p class="error-message">Error: {errorMessage}</p>
   {:else if words.length === 0}
-    <p>No Words found in the database. try adding some!</p>
+    <p class="info-message">No words found in the database. Try adding some!</p>
   {:else}
-    <div id="word-list-container">
+    <div class="word-list-container">
       {#each words as card (card.id)}
-        <div class="word-item">
-          <span class="word">{card.word}</span>
-          <span class="definition">{card.definition}</span>
-        </div>
-      {:else}
-        <p>No words to display in the list.</p>
+        <WordListItem
+          wordEntry={card}
+          onDeleteRequested={handleItemDeleteRequest}
+        />
       {/each}
     </div>
   {/if}
 </div>
 
 <style>
-  /* Styles from your previous styles.css can be moved here or to a global CSS file */
-  /* These are scoped to this component by default in Svelte */
   .app-container {
-    padding: 1rem;
-    max-width: 800px;
+    max-width: 700px;
     margin: 0 auto;
+    padding: 0 1rem;
   }
 
   h1 {
     text-align: center;
     font-weight: normal;
-    font-size: 1.8rem; /* Adjusted */
-    padding-bottom: 1rem; /* Adjusted */
-    margin-bottom: 1.5rem; /* Adjusted */
-    border-bottom: 1px solid red;
+    font-size: 1.8rem;
+    padding-bottom: 1rem;
+    margin: 2rem 0 1.5rem 0;
+    border-bottom: 2px solid red;
+    color: #111;
   }
 
-  #word-list-container {
-    /* max-height removed for now, let the page scroll if needed */
-    overflow-y: auto;
+  .loading-message,
+  .error-message,
+  .info-message {
+    text-align: center;
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  .error-message {
+    color: red;
+    border: 1px solid red;
+    background-color: #ffeeee;
   }
 
-  .word-item {
-    padding: 1rem 0.5rem; /* Adjusted */
-    border-bottom: 1px solid red;
-    display: flex;
-    flex-direction: column; /* Word and definition stacked */
-    gap: 0.5rem;
+  .word-list-container {
+    /* Specific styles for the container of WordListItems, if any */
   }
-
-  .word {
-    font-size: 1.4rem;
-    font-weight: bold;
-  }
-
-  .definition {
-    font-family: "Menlo", "Consolas", monospace;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: #444444;
-    padding-left: 1rem;
-    border-left: 2px solid #ddd;
-  }
-
-  /* .hidden { display: none; } // We'll add toggle logic later */
-
-  /* TODO: Add styles for buttons and forms later */
 </style>

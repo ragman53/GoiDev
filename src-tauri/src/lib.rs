@@ -6,7 +6,7 @@ pub mod commands;
 pub mod models; // Make modules public if needed by main.rs or integration tests
 
 // Use necessary items
-use log::{error, info};
+use log::info;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use tauri::Manager;
 // Import all commands from the commands module to re-export or use in handler

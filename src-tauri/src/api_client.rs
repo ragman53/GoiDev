@@ -1,5 +1,5 @@
 use crate::models::ApiResponseEntry;
-use log::{error, info};
+use log::info;
 use reqwest;
 
 /// Fetches a word definition from the Dictionary API

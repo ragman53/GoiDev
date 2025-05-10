@@ -2,7 +2,7 @@ use crate::DbPool;
 use crate::api_client::fetch_definition; // Import function from our api_client module
 use crate::models::WordEntry; // Import struct from our models module
 use log::{error, info}; // For logging
-use sqlx::{self, SqlitePool}; // Import SqlitePool directly
+use sqlx::{self}; // Import SqlitePool directly
 use tauri::State; // For accessing managed state // Use the DbPool type alias defined in main.rs (or move alias definition)
 
 #[tauri::command]
