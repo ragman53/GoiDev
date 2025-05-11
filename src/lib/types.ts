@@ -1,9 +1,38 @@
-// src/types.ts
-// Defines the structure for a word entry, shared between frontend and backend calls.
+// src/lib/types.ts
 
+/**
+ * Represents a definition for a word with an optional example
+ */
+export interface ApiDefinition {
+  /** The textual definition */
+  definition: string;
+  /** Optional usage example demonstrating the word in context */
+  example?: string;
+}
+
+/**
+ * Represents a meaning of a word, including its part of speech and definitions
+ */
+export interface ApiMeaning {
+  /**
+   * Grammatical category of the word (noun, verb, adjective, etc.)
+   * Note: in Rust, it's part_of_speech, but serde renames it for JSON
+   */
+  partOfSpeech: string;
+  /** Collection of definitions for this meaning */
+  definitions: ApiDefinition[];
+}
+
+/**
+ * Represents a dictionary entry for a word
+ */
 export interface WordEntry {
-  id: number; // Unique identifier from the database
-  word: string; // The word itself
-  definition: string; // The definition of the word
-  // created_at?: string; // Optional: if you plan to use it from the DB
+  /** Unique database identifier */
+  id: number;
+  /** The word itself */
+  word: string;
+  /** Complete definition of the word */
+  definition: string;
+  // /** Timestamp when the entry was created in the database */
+  // created_at?: string;
 }

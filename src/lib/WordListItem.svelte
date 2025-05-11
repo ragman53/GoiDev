@@ -1,27 +1,49 @@
 <script lang="ts">
-  import type { WordEntry } from "./types";
+  import type { WordEntry, ApiMeaning } from "./types";
 
-  export let wordEntry: WordEntry;
-  let isDefinitionVisible = false;
+  // Component props
+  export let wordEntry: WordEntry; // The word entry data containing word, definition, etc.
+  export let onDeleteRequested: (detail: { id: number; word: string }) => void; // Callback function when word deletion is requested
 
-  export let onDeleteRequested: (detail: { id: number; word: string }) => void;
+  // Local state
+  let isDefinitionVisible = false; // Controls whether definition section is expanded
+  let parsedMeanings: ApiMeaning[] | null = null; // Holds parsed definition data when available
+  let parsingError: string | null = null; // Captures any JSON parsing errors
 
+  /**
+   * Toggles the visibility of the definition section and parses JSON definition
+   * data if needed when expanding for the first time
+   */
   function toggleDefinition() {
     isDefinitionVisible = !isDefinitionVisible;
+
+    // Only parse definition when showing for the first time
+    if (isDefinitionVisible && !parsedMeanings && !parsingError) {
+      try {
+        parsedMeanings = JSON.parse(wordEntry.definition) as ApiMeaning[];
+        if (!Array.isArray(parsedMeanings) || parsedMeanings.length === 0) {
+          parsingError = "No structured definition found.";
+          parsedMeanings = null;
+        }
+      } catch (e) {
+        console.error("Error parsing definition JSON:", e);
+        parsingError = "Failed to parse definition data.";
+        parsedMeanings = null;
+      }
+    }
   }
 
-  // Handles the click on the delete button
+  /**
+   * Handles deletion of a word entry with user confirmation
+   */
   function handleDeleteClick() {
-    // Optional: Confirm with the user before deleting
     if (
       window.confirm(`Are you sure you want to delete "${wordEntry.word}"?`)
     ) {
-      if (onDeleteRequested) {
-        onDeleteRequested({
-          id: wordEntry.id,
-          word: wordEntry.word,
-        });
-      }
+      onDeleteRequested({
+        id: wordEntry.id,
+        word: wordEntry.word,
+      });
     }
   }
 </script>
@@ -33,14 +55,35 @@
       <button class="toggle-definition-button" on:click={toggleDefinition}>
         {isDefinitionVisible ? "Hide Def" : "Show Def"}
       </button>
-      <!-- Add the delete button and its click handler -->
       <button class="delete-button" on:click={handleDeleteClick}> Del </button>
     </div>
   </div>
 
   {#if isDefinitionVisible}
     <div class="definition-wrapper">
-      <span class="definition">{wordEntry.definition}</span>
+      {#if parsingError}
+        <p class="parse-error">Error: {parsingError}</p>
+      {:else if parsedMeanings && parsedMeanings.length > 0}
+        {#each parsedMeanings as meaning (meaning.partOfSpeech)}
+          <div class="meaning-block">
+            <h4 class="part-of-speech">{meaning.partOfSpeech}</h4>
+            <ul class="definitions-list">
+              {#each meaning.definitions as defItem, i (defItem.definition + i)}
+                <li>
+                  <span class="definition-text">{defItem.definition}</span>
+                  {#if defItem.example}
+                    <span class="example-text"
+                      ><em>Example:</em> {defItem.example}</span
+                    >
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/each}
+      {:else}
+        <p>No definition details available.</p>
+      {/if}
     </div>
   {/if}
 </div>
@@ -48,79 +91,106 @@
 <style>
   /* Styles scoped to this WordListItem component */
   .word-item {
-    padding: 1rem 0.5rem; /* Vertical padding, horizontal padding */
-    border-bottom: 1px solid red; /* Red line separator */
+    padding: 1rem 0.5rem;
+    border-bottom: 1px solid red;
     display: flex;
-    flex-direction: column; /* Stack header and definition vertically */
-    gap: 0.5rem; /* Space between header and definition block */
+    flex-direction: column;
+    gap: 0.75rem; /* Increased gap for better spacing */
   }
   .word-item:last-child {
-    border-bottom: none; /* No border for the last item in a list */
+    border-bottom: none;
   }
 
   .word-header {
-    display: flex; /* Arrange word and buttons in a row */
-    justify-content: space-between; /* Pushes buttons to the right */
-    align-items: center; /* Align items vertically */
-    gap: 1rem; /* Space between word and buttons container */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
   }
 
   .word {
-    font-size: 1.5rem;
+    font-size: 1.6rem; /* Slightly larger word */
     font-weight: bold;
     color: #111;
-    flex-grow: 1; /* Allow word to take available space */
-    word-break: break-word; /* Prevent long words from overflowing */
+    flex-grow: 1;
+    word-break: break-word;
   }
 
   .buttons {
     display: flex;
-    gap: 0.5rem; /* Space between buttons, if multiple */
-    flex-shrink: 0; /* Prevent buttons from shrinking */
+    gap: 0.5rem;
+    flex-shrink: 0;
   }
 
-  .toggle-definition-button /*, .delete-button (for future) */ {
+  .toggle-definition-button,
+  .delete-button {
     font-family: inherit;
     font-size: 0.8rem;
     background: none;
     border: 1px solid red;
     color: red;
-    padding: 0.3rem 0.7rem; /* Slightly adjusted padding */
-    cursor: pointer;
-    transition: none; /* No transition for brutalist style */
-    white-space: nowrap; /* Prevent button text from wrapping */
-  }
-  .toggle-definition-button:hover /*, .delete-button:hover */ {
-    background-color: rgba(255, 0, 0, 0.05); /* Softer hover */
-  }
-
-  .definition-wrapper {
-    /* Optional: if you want to style the block containing the definition */
-    margin-top: 0.25rem; /* Small space above definition if it's visible */
-  }
-
-  .definition {
-    font-family: "Menlo", "Consolas", "Courier New", monospace;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #333;
-    padding-left: 1em; /* Indent definition */
-    /* border-left: 2px solid #ddd; // Optional border, you can re-add if you like */
-    white-space: pre-wrap; /* Preserve whitespace and newlines in definition text */
-  }
-
-  .delete-button {
-    font-family: inherit;
-    font-size: 0.8rem;
-    background: none;
-    border: 1px solid #888; /* Example: Grey border */
-    color: #555; /* Example: Grey text */
     padding: 0.3rem 0.7rem;
     cursor: pointer;
     transition: none;
+    white-space: nowrap;
+  }
+  .toggle-definition-button:hover,
+  .delete-button:hover {
+    background-color: rgba(255, 0, 0, 0.05);
+  }
+  .delete-button {
+    border-color: #888;
+    color: #555;
   }
   .delete-button:hover {
     background-color: #f0f0f0;
     border-color: #555;
+  }
+
+  .definition-wrapper {
+    margin-top: 0.5rem; /* Space above the definition block */
+    padding-left: 0.5em; /* Indent the whole definition block slightly */
+  }
+
+  .meaning-block {
+    margin-bottom: 0.75rem; /* Space between different parts of speech */
+  }
+
+  .part-of-speech {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #d00000; /* Red for part of speech */
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+
+  .definitions-list {
+    list-style-type: decimal; /* Numbered definitions */
+    padding-left: 1.5em; /* Indent for numbers */
+    margin: 0;
+  }
+
+  .definitions-list li {
+    margin-bottom: 0.5rem; /* Space between definitions */
+  }
+
+  .definition-text {
+    font-family: "Menlo", "Consolas", "Courier New", monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #333;
+  }
+
+  .example-text {
+    display: block; /* Put example on a new line */
+    font-style: italic;
+    font-size: 0.9rem;
+    color: #555;
+    margin-left: 1em; /* Indent example further */
+  }
+
+  .parse-error {
+    color: #cc0000;
+    font-style: italic;
   }
 </style>

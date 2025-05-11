@@ -1,9 +1,9 @@
-use crate::DbPool;
-use crate::api_client::fetch_definition; // Import function from our api_client module
-use crate::models::WordEntry; // Import struct from our models module
-use log::{error, info}; // For logging
-use sqlx::{self}; // Import SqlitePool directly
-use tauri::State; // For accessing managed state // Use the DbPool type alias defined in main.rs (or move alias definition)
+// src-tauri/src/commands.rs
+use crate::models::WordEntry;
+use crate::{DbPool, api_client::fetch_definition};
+use log::{error, info};
+use serde_json;
+use tauri::State;
 
 #[tauri::command]
 pub async fn get_words(pool: tauri::State<'_, DbPool>) -> Result<Vec<WordEntry>, String> {
@@ -22,47 +22,71 @@ pub async fn get_words(pool: tauri::State<'_, DbPool>) -> Result<Vec<WordEntry>,
     Ok(words) // Return the fetched words
 }
 
-/// Takes a word, fetches its definition from the Free Dictionary API,
-/// and adds it to the database.
+/// Fetches a word's definition from the Free Dictionary API and adds it to the database.
+///
+/// # Arguments
+/// * `word` - The word to look up and store
+/// * `pool` - Database connection pool
+///
+/// # Returns
+/// * `Ok(())` if the word was successfully added
+/// * `Err(String)` with error message if the operation failed
 #[tauri::command]
 pub async fn add_word_from_api(word: String, pool: State<'_, DbPool>) -> Result<(), String> {
-    info!("Attempting to add word from '{}' using API", word);
-    let definition = match fetch_definition(&word).await {
-        Ok(Some(def)) => {
-            info!("Definition found for '{}': {}", word, def);
-            def // Return the definition if found
-        }
-        Ok(None) => {
-            let msg = format!("Definition not found via API for word: {}", word);
-            info!("{}", msg);
-            return Err(msg); // Return an error if the word was not found
-        }
-        Err(e) => {
-            error!("Error fethcing definition for '{}': {}", word, e);
-            return Err(format!("API Error for '{}': {}", word, e));
-        }
-    };
     info!(
-        "Attempting to save'{}' with fetched definition to DB.",
+        "Attempting to add word '{}' using API and store rich definition.",
         word
     );
+
+    // Fetch definition from external API
+    let meanings_vec = match fetch_definition(&word).await {
+        Ok(Some(meanings)) => {
+            if meanings.is_empty() {
+                return Err(format!("No definition found via API for word: {}", word));
+            }
+            info!("Rich definition found for '{}'.", word);
+            meanings
+        }
+        Ok(None) => {
+            return Err(format!("Definition not found via API for word: {}", word));
+        }
+        Err(e) => {
+            let err_msg = format!("API Error while fetching definition for '{}': {}", word, e);
+            error!("{}", err_msg);
+            return Err(err_msg);
+        }
+    };
+
+    // Convert API response data to JSON for storage
+    let definition_json = match serde_json::to_string(&meanings_vec) {
+        Ok(json_str) => json_str,
+        Err(e) => {
+            let err_msg = format!("Failed to serialize rich definition for '{}': {}", word, e);
+            error!("{}", err_msg);
+            return Err(err_msg);
+        }
+    };
+
+    // Save the word and its JSON definition to the database
+    info!("Saving '{}' with JSON definition to database", word);
     let sql = "INSERT INTO words (word, definition) VALUES (?, ?)";
     match sqlx::query(sql)
         .bind(word.clone())
-        .bind(definition)
+        .bind(definition_json)
         .execute(&*pool)
         .await
     {
         Ok(result) => {
             info!(
-                "Word '{}' added successfully to DB. Rows affected: {}",
+                "Word '{}' and its JSON definition saved successfully. Rows affected: {}",
                 word,
                 result.rows_affected()
             );
             Ok(())
         }
         Err(e) => {
-            error!("Failed to add word '{}' to DB: {:?}", word, e);
+            error!("Database error while saving '{}': {:?}", word, e);
+            // Check specifically for unique constraint violations
             if let Some(db_err) = e.as_database_error() {
                 if db_err.is_unique_violation() {
                     return Err(format!("Word '{}' already exists in the database.", word));
