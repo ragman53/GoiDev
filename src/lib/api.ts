@@ -15,10 +15,6 @@ export async function getWords(): Promise<WordEntry[]> {
     throw error;
   }
 }
-
-// TODO: Add function for addWordFromApi later
-// export async function addWordFromApi(word: string): Promise<void> { ... }
-
 /**
  * Sends a word ID to the backend to delete the corresponding word entry.
  * @param id - The ID of the word to delete.
@@ -38,5 +34,27 @@ export async function deleteWord(id: number): Promise<void> {
       error
     );
     throw error; // Re-throw to be caught by the caller
+  }
+}
+/**
+ * Sends a word to the backend to fetch its definition via API and add it to the DB.
+ * @param word - The word to add to the database.
+ * @returns A promise that resolves on success or rejects on error from backend.
+ */
+export async function addWordFromApi(word: string): Promise<void> {
+  console.log(
+    `Svelte (api.ts): Invoking add_word_from_api command for word: "${word}"...`
+  );
+  try {
+    await invoke("add_word_from_api", { word });
+    console.log(
+      `Svelte (api.ts): add_word_from_api command successful for word: "${word}"`
+    );
+  } catch (error) {
+    console.error(
+      `Svelte (api.ts): Error invoking add_word_from_api for word "${word}":`,
+      error
+    );
+    throw error;
   }
 }

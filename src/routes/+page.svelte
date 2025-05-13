@@ -1,21 +1,23 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getWords, deleteWord } from "$lib/api"; // Import deleteWord
+  import { getWords, deleteWord, addWordFromApi } from "$lib/api";
   import type { WordEntry } from "$lib/types";
   import WordListItem from "$lib/WordListItem.svelte";
+  import AddWordForm from "$lib/AddWordForm.svelte";
 
   let words: WordEntry[] = [];
   let isLoading = true;
-  let errorMessage: string | null = null;
+  let pageErrorMessage: string | null = null;
 
   // Function to load words (reused for initial load and refresh)
   async function loadWords() {
     isLoading = true;
-    errorMessage = null;
+    pageErrorMessage = null;
     try {
       words = await getWords();
     } catch (e: any) {
-      errorMessage = e.message || "An unknown error occurred.";
+      pageErrorMessage =
+        e.message || "An unknown error occurred while fetching words.";
       console.error("Error fetching words:", e);
     } finally {
       isLoading = false;
@@ -24,35 +26,50 @@
 
   onMount(loadWords); // Load words when component mounts
 
-  // This function will be passed as a prop to WordListItem
-  // Its signature now matches the expected callback prop
-  async function handleItemDeleteRequest(detail: { id: number; word: string }) {
-    const { id, word } = detail;
-    console.log(`Delete requested for ID: ${id}, Word: ${word}`);
-
-    isLoading = true;
-    try {
-      await deleteWord(id);
-      console.log(`Word "${word}" (ID: ${id}) deleted successfully.`);
-      await loadWords();
-    } catch (e: any) {
-      errorMessage = `Error deleting word "${word}": ${e.message || e}`;
-      console.error(`Error deleting word "${word}":`, e);
-    } finally {
-      isLoading = false;
-    }
+  // Callback for when AddWordForm successfully adds a word
+  async function handleWordHasBeenAdded() {
+    console.log("+page.svelte: Word was added! Refreshing list...");
+    alert("Word added successfully! List refreshing...");
+    await loadWords();
   }
 
-  // TODO: AddWordForm component and its logic
+  // Callback for when AddWordForm successfully adds a word
+  function handleAddWordError(error: any) {
+    console.error("+page.svelte: Error from AddWordForm:", error);
+    const message =
+      typeof error === "string"
+        ? error
+        : error.message || "An unknown error occurred during add.";
+    pageErrorMessage = `Failed to add word: ${message}`;
+  }
+  // Function to handle the 'deleteRequested' event from WordListItem
+  async function handleItemDeleteRequest(detail: { id: number; word: string }) {
+    const { id, word } = detail;
+    pageErrorMessage = null; // Clear previous errors before attempting delete
+    try {
+      await deleteWord(id);
+      alert(`Word "${word}" (ID: ${id}) deleted successfully!`); // Replaced showSuccessMessage with alert
+      await loadWords();
+    } catch (e: any) {
+      // Set pageErrorMessage to display the error in the HTML template
+      pageErrorMessage = `Error deleting word "${word}": ${e.message || e}`;
+      console.error(`Error deleting word "${word}":`, e);
+    }
+  }
 </script>
 
 <div class="app-container">
   <h1>Word List (Svelte Edition)</h1>
 
+  <AddWordForm
+    onWordAdded={handleWordHasBeenAdded}
+    onAddError={handleAddWordError}
+  />
+
   {#if isLoading && words.length === 0}
     <p class="loading-message">Loading words from database...</p>
-  {:else if errorMessage}
-    <p class="error-message">Error: {errorMessage}</p>
+  {:else if pageErrorMessage}
+    <p class="error-message">Error: {pageErrorMessage}</p>
   {:else if words.length === 0}
     <p class="info-message">No words found in the database. Try adding some!</p>
   {:else}

@@ -22,7 +22,6 @@ pub struct WordEntry {
 pub struct ApiDefinition {
     /// The actual definition text
     pub definition: String,
-    /// Optional example usage of the word in this definition context
     pub example: Option<String>,
     // Potential future fields:
     // pub synonyms: Vec<String>,
@@ -34,6 +33,7 @@ pub struct ApiDefinition {
 pub struct ApiMeaning {
     /// Collection of definitions for this part of speech
     #[serde(rename = "partOfSpeech")]
+    pub part_of_speech: String,
     pub definitions: Vec<ApiDefinition>,
     // Potential future fields:
     // pub synonyms: Vec<String>,
@@ -48,8 +48,9 @@ pub struct ApiResponseWordEntry {
     pub word: String,
     /// Various meanings/usages of the word grouped by part of speech
     pub meanings: Vec<ApiMeaning>,
-    // Potential future field:
     // pub phonetics: Vec<ApiPhonetic>,
+    // pub license: ApiLicense,
+    // pub sourceUrls: Vec<String>,
 }
 
 /// Represents pronunciation information for a word.
