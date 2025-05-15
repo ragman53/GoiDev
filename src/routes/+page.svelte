@@ -4,117 +4,185 @@
   import type { WordEntry } from "$lib/types";
   import WordListItem from "$lib/WordListItem.svelte";
   import AddWordForm from "$lib/AddWordForm.svelte";
+  import PdfViewer from "$lib/PdfViewer.svelte";
 
   let words: WordEntry[] = [];
-  let isLoading = true;
+  let isLoadingWords = true;
   let pageErrorMessage: string | null = null;
+
+  // --- Lifecycle Functions ---
+  /**
+   * onMount: Svelte lifecycle function that runs once when the component is first mounted.
+   * Used here to load the initial list of words from the database.
+   */
+  onMount(async () => {
+    await loadWords();
+  });
 
   // Function to load words (reused for initial load and refresh)
   async function loadWords() {
-    isLoading = true;
+    isLoadingWords = true;
     pageErrorMessage = null;
     try {
+      console.log("+page.selte: Fetching words...");
       words = await getWords();
+      console.log("+page.svelte: words fetched successfully.", words);
     } catch (e: any) {
-      pageErrorMessage =
+      const message =
         e.message || "An unknown error occurred while fetching words.";
-      console.error("Error fetching words:", e);
+      pageErrorMessage = message;
+      console.error("+page.svelte: Error fetching words:", e);
     } finally {
-      isLoading = false;
+      isLoadingWords = false;
     }
   }
 
-  onMount(loadWords); // Load words when component mounts
-
   // Callback for when AddWordForm successfully adds a word
   async function handleWordHasBeenAdded() {
-    console.log("+page.svelte: Word was added! Refreshing list...");
-    alert("Word added successfully! List refreshing...");
+    console.log(
+      "+page.svelte: 'onWordAdded' callback triggered. Refreshing list..."
+    );
+    // alert("Word added successfully! List refreshing...");
     await loadWords();
   }
 
-  // Callback for when AddWordForm successfully adds a word
+  /**
+   * Callback function passed to AddWordForm.
+   * Called when an error occurs during the word addition process in AddWordForm.
+   * @param error - The error object or message from AddWordForm.
+   */
   function handleAddWordError(error: any) {
-    console.error("+page.svelte: Error from AddWordForm:", error);
+    console.error("+page.svelte: 'onAddError' callback triggered:", error);
     const message =
       typeof error === "string"
         ? error
-        : error.message || "An unknown error occurred during add.";
+        : error?.message || "Unknown error adding word.";
     pageErrorMessage = `Failed to add word: ${message}`;
   }
-  // Function to handle the 'deleteRequested' event from WordListItem
-  async function handleItemDeleteRequest(detail: { id: number; word: string }) {
+
+  /**
+   * Callback function passed to WordListItem.
+   * Called when a delete request is initiated from a WordListItem component.
+   * @param detail - An object containing the id and word of the item to be deleted.
+   */
+  async function handleItemDelete(detail: { id: number; word: string }) {
     const { id, word } = detail;
-    pageErrorMessage = null; // Clear previous errors before attempting delete
+    pageErrorMessage = null; // Clear previous errors
+    console.log(
+      `+page.svelte: 'onDeleteRequested' callback for ID: ${id}, Word: ${word}`
+    );
     try {
       await deleteWord(id);
-      alert(`Word "${word}" (ID: ${id}) deleted successfully!`); // Replaced showSuccessMessage with alert
-      await loadWords();
+      console.log(`+page.svelte: Word "${word}" (ID: ${id}) deleted via API.`);
+      // alert(`Word "${word}" (ID: ${id}) deleted successfully!`); // Using page status instead
+      await loadWords(); // Refresh the list
     } catch (e: any) {
-      // Set pageErrorMessage to display the error in the HTML template
-      pageErrorMessage = `Error deleting word "${word}": ${e.message || e}`;
-      console.error(`Error deleting word "${word}":`, e);
+      const message =
+        e.message || `An unknown error occurred while deleting "${word}".`;
+      pageErrorMessage = `Error deleting word "${word}": ${message}`;
+      console.error(`+page.svelte: Error deleting word "${word}":`, e);
     }
   }
 </script>
 
-<div class="app-container">
-  <h1>Word List (Svelte Edition)</h1>
+<div class="main-layout-container">
+  <div class="word-list-pane">
+    <h1>Word List</h1>
+    <AddWordForm
+      onWordAdded={handleWordHasBeenAdded}
+      onAddError={handleAddWordError}
+    />
 
-  <AddWordForm
-    onWordAdded={handleWordHasBeenAdded}
-    onAddError={handleAddWordError}
-  />
+    {#if isLoadingWords && words.length === 0}
+      <p class="status-message loading">Loading words...</p>
+    {:else if pageErrorMessage}
+      <p class="status-message error">Error: {pageErrorMessage}</p>
+    {:else if words.length === 0}
+      <p class="status-message info">
+        No words found. Add some using the form above!
+      </p>
+    {:else}
+      <div class="word-list-scroll-container">
+        {#each words as card (card.id)}
+          <WordListItem wordEntry={card} onDeleteRequested={handleItemDelete} />
+        {/each}
+      </div>
+    {/if}
+  </div>
 
-  {#if isLoading && words.length === 0}
-    <p class="loading-message">Loading words from database...</p>
-  {:else if pageErrorMessage}
-    <p class="error-message">Error: {pageErrorMessage}</p>
-  {:else if words.length === 0}
-    <p class="info-message">No words found in the database. Try adding some!</p>
-  {:else}
-    <div class="word-list-container">
-      {#each words as card (card.id)}
-        <WordListItem
-          wordEntry={card}
-          onDeleteRequested={handleItemDeleteRequest}
-        />
-      {/each}
-    </div>
-  {/if}
+  <div class="pdf-viewer-pane-wrapper">
+    <PdfViewer />
+  </div>
 </div>
 
 <style>
-  .app-container {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 0 1rem;
+  /* Styles for the main two-pane layout and page-specific elements */
+  .main-layout-container {
+    display: flex;
+    flex-direction: row; /* Side-by-side panes */
+    height: 100vh; /* Full viewport height */
+    width: 100vw; /* Full viewport width */
+    overflow: hidden; /* Prevent scrollbars on the layout container itself */
+    box-sizing: border-box;
+    background-color: #fff; /* Base background for the app */
   }
 
-  h1 {
+  .word-list-pane {
+    flex: 1 1 40%; /* Adjusted flex basis, can be tuned */
+    min-width: 300px; /* Minimum width for the word list pane */
+    padding: 1rem;
+    overflow-y: hidden; /* Let child scroll container handle scroll */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .pdf-viewer-pane-wrapper {
+    flex: 1 1 60%; /* Adjusted flex basis */
+    min-width: 350px; /* Minimum width for the PDF viewer pane */
+    overflow: hidden;
+    display: flex; /* To make PdfViewer component fill height */
+    box-sizing: border-box;
+    /* The red border is now on the left of PdfViewer.svelte */
+  }
+
+  .word-list-pane h1 {
     text-align: center;
     font-weight: normal;
-    font-size: 1.8rem;
-    padding-bottom: 1rem;
-    margin: 2rem 0 1.5rem 0;
-    border-bottom: 2px solid red;
+    font-size: 1.5rem; /* Consistent title size */
+    padding-bottom: 0.75rem;
+    margin: 0 0 1rem 0;
+    border-bottom: 1px solid red;
     color: #111;
+    flex-shrink: 0;
   }
 
-  .loading-message,
-  .error-message,
-  .info-message {
+  /* Container for the actual list of words, to enable scrolling within the pane */
+  .word-list-scroll-container {
+    flex-grow: 1; /* Takes available vertical space */
+    overflow-y: auto; /* Enables scrolling for the list itself */
+    padding-right: 0.5rem; /* Space for scrollbar if needed, adjust for OS */
+    margin-top: 1rem; /* Space below AddWordForm */
+  }
+
+  /* Common styling for status messages */
+  .status-message {
     text-align: center;
     padding: 1rem;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    flex-shrink: 0;
+    border: 1px solid transparent; /* Base for consistent spacing */
   }
-  .error-message {
+  .status-message.loading {
+    color: #555;
+  }
+  .status-message.info {
+    color: #333;
+  }
+  .status-message.error {
     color: red;
-    border: 1px solid red;
+    border-color: red;
     background-color: #ffeeee;
-  }
-
-  .word-list-container {
-    /* Specific styles for the container of WordListItems, if any */
+    padding: 0.75rem;
   }
 </style>
