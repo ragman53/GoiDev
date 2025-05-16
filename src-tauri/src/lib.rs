@@ -15,7 +15,7 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use tauri::{App, Manager}; // Explicitly import App
 
 // Import command handlers
-use commands::{add_word, add_word_from_api, delete_word, get_words};
+use commands::{add_word, add_word_from_api, delete_word, get_words, read_pdf_file};
 
 /// Type alias for the SQLite connection pool
 pub type DbPool = SqlitePool;
@@ -28,6 +28,8 @@ pub fn run_app() {
     info!("Starting Tauri application from library...");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         // Corrected setup closure signature and error boxing
         .setup(|app: &mut App| -> Result<(), Box<dyn Error + 'static>> { // Return type changed
             let handle = app.handle();
@@ -110,7 +112,8 @@ pub fn run_app() {
             get_words,
             add_word,
             delete_word,
-            add_word_from_api
+            add_word_from_api,
+            read_pdf_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

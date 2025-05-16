@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addWordFromApi } from "./api";
+  import { addWordFromApi } from "./word-api";
 
   // Props to handle events after word addition or errors
   export let onWordAdded: () => void;

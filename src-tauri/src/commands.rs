@@ -5,6 +5,9 @@ use log::{error, info};
 use serde_json;
 use tauri::State;
 
+use std::fs::File;
+use std::io::Read;
+
 #[tauri::command]
 pub async fn get_words(pool: tauri::State<'_, DbPool>) -> Result<Vec<WordEntry>, String> {
     info!("Fetching words from database..."); // Log message for debugging
@@ -147,6 +150,34 @@ pub async fn delete_word(id: i64, pool: tauri::State<'_, DbPool>) -> Result<(), 
         Err(e) => {
             error!("Failed to delete word with ID {}: {:?}", id, e);
             Err(format!("Failed to delete word with ID {}: {:?}", id, e)) // Return an error if the deletion fails
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn read_pdf_file(path: String) -> Result<Vec<u8>, String> {
+    log::info!("Attempting to read PDF file from path: {}", path);
+    match File::open(&path) {
+        Ok(mut file) => {
+            let mut buffer = Vec::new();
+            match file.read_to_end(&mut buffer) {
+                Ok(_) => {
+                    log::info!(
+                        "Succcessfully read {} bytes from PDF file: {}",
+                        buffer.len(),
+                        path
+                    );
+                    Ok(buffer)
+                }
+                Err(e) => {
+                    log::error!("Failed to read content from PDF file '{}': {}", path, e);
+                    Err(format!("Failed to read file content: {}", e.to_string()))
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("Failed to open PDF file '{}': {}", path, e);
+            Err(format!("Failed to open file: {}", e.to_string()))
         }
     }
 }

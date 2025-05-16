@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getWords, deleteWord, addWordFromApi } from "$lib/api";
+  import { getWords, deleteWord, addWordFromApi } from "$lib/word-api";
   import type { WordEntry } from "$lib/types";
   import WordListItem from "$lib/WordListItem.svelte";
   import AddWordForm from "$lib/AddWordForm.svelte";
